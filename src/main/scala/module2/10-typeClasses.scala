@@ -82,12 +82,15 @@ object type_classes {
   // 1 компонент
   trait Eq[T]{
     def ===(a: T, b: T): Boolean
+    //def =!=(a: T, b: T): Boolean
   }
 
   object Eq{
     def apply[T](): Eq[T] = ???
     // 2 компонент
-    implicit val eqStr: Eq[String] = (a: String, b: String) => a == b
+    implicit val eqStr: Eq[String] = {
+      (a: String, b: String) => a == b
+    }
   }
 
   // 4 компонент

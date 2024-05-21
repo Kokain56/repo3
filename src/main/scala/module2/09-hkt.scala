@@ -1,5 +1,6 @@
 package module2
 
+
 object higher_kinded_types{
 
   def tuple[A, B](a: List[A], b: List[B]): List[(A, B)] =
@@ -12,29 +13,29 @@ object higher_kinded_types{
     a.flatMap{ a => b.map((a, _))}
 
 
-  def tuplef[F[_], A, B](fa: F[A], fb: F[B]): F[(A, B)] = ???
+  def tuplef[F[_], A, B](fa: F[A], fb: F[B])(implicit bind: Bindable[F]): F[(A, B)] =
+    bind.flatMap(fa)(a => bind.map(fb)((a, _)))
 
 
-  trait Bindable[F[_], A] {
-    def map[B](f: A => B): F[B]
-    def flatMap[B](f: A => F[B]): F[B]
+  trait Bindable[F[_]] {
+    def map[A, B](fa: F[A])(f: A => B): F[B]
+    def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
   }
 
-  def tupleBindable[F[_], A, B](fa: Bindable[F, A], fb: Bindable[F, B]): F[(A, B)]  =
-    fa.flatMap(a => fb.map((a, _)))
+  implicit val optBindable: Bindable[Option] =
+    new Bindable[Option] {
 
-  def optBindable[A](opt: Option[A]): Bindable[Option, A] =
-    new Bindable[Option, A] {
-      override def map[B](f: A => B): Option[B] = opt.map(f)
+      override def flatMap[A, B](fa: Option[A])(f: A => Option[B]): Option[B] = fa.flatMap(f)
 
-      override def flatMap[B](f: A => Option[B]): Option[B] = opt.flatMap(f)
+      override def map[A, B](fa: Option[A])(f: A => B): Option[B] = fa.map(f)
     }
 
-  def listBindable[A](opt: List[A]): Bindable[List, A] =
-    new Bindable[List, A] {
-      override def map[B](f: A => B): List[B] = opt.map(f)
+  implicit val listBindable: Bindable[List] =
+    new Bindable[List] {
 
-      override def flatMap[B](f: A => List[B]): List[B] = opt.flatMap(f)
+      override def map[A, B](fa: List[A])(f: A => B): List[B] = fa.map(f)
+
+      override def flatMap[A, B](fa: List[A])(f: A => List[B]): List[B] = fa.flatMap(f)
     }
 
 
@@ -48,8 +49,8 @@ object higher_kinded_types{
   val list1 = List(1, 2, 3)
   val list2 = List(4, 5, 6)
 
-  lazy val r3 = println(tupleBindable(optBindable(optA), optBindable(optB)))
-  lazy val r4 = println(tupleBindable(listBindable(list1), listBindable(list2)))
+  //lazy val r3 = println(tupleBindable(optBindable(optA), optBindable(optB)))
+  //lazy val r4 = println(tupleBindable(listBindable(list1), listBindable(list2)))
 
   lazy val r1 = println(tuplef(optA, optB))
   lazy val r2 = println(tuplef(list1, list2))
