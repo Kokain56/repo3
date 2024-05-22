@@ -1,7 +1,10 @@
 package catsconcurrency.cats_effect_homework
 
-import cats.effect.{IO, IOApp}
+import cats.Monad
+import cats.effect.{IO, IOApp, Spawn}
 import cats.implicits._
+
+import scala.concurrent.duration.DurationInt
 
 // Поиграемся с кошельками на файлах и файберами.
 
@@ -25,6 +28,27 @@ object WalletFibersApp extends IOApp.Simple {
       wallet2 <- Wallet.fileWallet[IO]("2")
       wallet3 <- Wallet.fileWallet[IO]("3")
       // todo: запустить все файберы и ждать ввода от пользователя чтобы завершить работу
+      fiber1 <- Spawn[IO].start(loop(topup(wallet1, 100)))
+      fiber2 <- Spawn[IO].start(loop(topup(wallet2, 500)))
+      fiber3 <- Spawn[IO].start(loop(topup(wallet3, 2000)))
+      show <- Spawn[IO].start(loop(showBalancesWallets(wallet1, wallet2, wallet3)))
+      _ <- IO.readLine
+      _ <- fiber1.cancel *> fiber2.cancel *> fiber3.cancel *> show.cancel
     } yield ()
+
+  def loop(v: => IO[Unit]): IO[Unit] =
+    Monad[IO].whileM_(IO(true)) { v }
+
+  def topup(wallet: Wallet[IO], pause: Int) = for {
+    _ <-wallet.topup(100)
+    res <-IO.sleep(pause.milliseconds)
+  } yield res
+
+  def showBalancesWallets(wallet1: Wallet[IO], wallet2: Wallet[IO], wallet3: Wallet[IO]) = for {
+    _ <- wallet1.balance.flatMap(x => IO.println(s"wallet 1: $x"))
+    _ <- wallet2.balance.flatMap(x => IO.println(s"wallet 2: $x"))
+    _ <- wallet3.balance.flatMap(x => IO.println(s"wallet 3: $x"))
+    res <- IO.sleep(1.second)
+  } yield res
 
 }
